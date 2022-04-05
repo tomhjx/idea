@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/tomhjx/idea/metric"
-	"github.com/tomhjx/idea/support"
 )
 
 type NginxConfig struct {
@@ -19,42 +18,40 @@ type Nginx struct {
 	requests int
 }
 
-func (i *Nginx) startup() (duration time.Duration, resources *metric.Resources) {
+func (i *Nginx) startup() *metric.RunTime {
 	// create master
 	// create listenfd
 	// master fork n worker
 	// master wait request
-	resources = &metric.Resources{
+	r := metric.NewRunTime()
+	r.Resources = &metric.Resources{
 		CPUs:   1,
 		Memory: 1024,
 	}
-	resources.Times(i.Config.WorkerProcesses)
-
-	return duration, resources
+	r.Resources.Times(i.Config.WorkerProcesses)
+	return r
 }
 
-func (i *Nginx) acceptHttp() (duration time.Duration, resources *metric.Resources) {
+func (i *Nginx) acceptHttp() *metric.RunTime {
+	r := metric.NewRunTime()
 
 	// n worker grab a accept mutex
-	duration = 10 * time.Millisecond
+	r.Duration = 10 * time.Millisecond
 
 	// 每个socket占用内存在15~20k之间
-	resources = &metric.Resources{
+	r.Resources = &metric.Resources{
 		CPUs:   1,
 		Memory: 15 << 10,
 	}
-
-	resources.Times(i.requests)
-
-	return duration, resources
+	r.Resources.Times(i.requests)
+	return r
 }
 
-func (i *Nginx) UpstreamHttpPassFastCGI(requests int, backend FastCGIServer) (duration time.Duration, resources *metric.Resources) {
+func (i *Nginx) UpstreamHttpPassFastCGI(requests int, backend FastCGIServer) *metric.RunTime {
 	i.requests = requests
-	c := &support.Calculator{}
-	c.Assemble(i.startup)
-	c.Assemble(i.acceptHttp)
-	c.Assemble(backend.Response)
-	duration, resources = c.Serialize()
-	return duration, resources
+	r := metric.NewRunTime()
+	r.Serialize(i.startup)
+	r.Serialize(i.acceptHttp)
+	r.Serialize(backend.Response)
+	return r
 }

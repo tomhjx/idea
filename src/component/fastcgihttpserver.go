@@ -4,17 +4,16 @@ import (
 	"time"
 
 	"github.com/tomhjx/idea/metric"
-	"github.com/tomhjx/idea/support"
 )
 
 type FastCGIHttpServer struct {
 	httpSpec *HttpSpec
 	backend  FastCGIServer
-	doAccept func(int, FastCGIServer) (time.Duration, *metric.Resources)
+	doAccept func(int, FastCGIServer) *metric.RunTime
 	Requests int
 }
 
-func NewFastCGIHttpServer(httpSpec *HttpSpec, backend FastCGIServer, doAccept func(int, FastCGIServer) (time.Duration, *metric.Resources)) *FastCGIHttpServer {
+func NewFastCGIHttpServer(httpSpec *HttpSpec, backend FastCGIServer, doAccept func(int, FastCGIServer) *metric.RunTime) *FastCGIHttpServer {
 	return &FastCGIHttpServer{
 		httpSpec: httpSpec,
 		backend:  backend,
@@ -26,16 +25,19 @@ func (i *FastCGIHttpServer) HttpSpec() *HttpSpec {
 	return i.httpSpec
 }
 
-func (i *FastCGIHttpServer) accept() (duration time.Duration, resources *metric.Resources) {
-	duration, resources = i.doAccept(i.Requests, i.backend)
-	return duration, resources
+func (i *FastCGIHttpServer) accept() *metric.RunTime {
+	r := metric.NewRunTime()
+	r.Duration = 10 * time.Millisecond
+	r.Resources = &metric.Resources{
+		CPUs:   1,
+		Memory: 10,
+	}
+	return r
 }
 
-func (i *FastCGIHttpServer) Response() (duration time.Duration, resources *metric.Resources) {
+func (i *FastCGIHttpServer) Response() *metric.RunTime {
 
-	c := &support.Calculator{}
-	c.Assemble(i.accept)
-	duration, resources = c.Serialize()
-
-	return duration, resources
+	r := metric.NewRunTime()
+	r.Serialize(i.accept)
+	return r
 }

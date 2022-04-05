@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/tomhjx/idea/metric"
-	"github.com/tomhjx/idea/support"
 )
 
 type FastCGISpec struct {
@@ -13,7 +12,7 @@ type FastCGISpec struct {
 
 type FastCGIServer interface {
 	FastCGISpec() *FastCGISpec
-	Response() (time.Duration, *metric.Resources)
+	Response() *metric.RunTime
 }
 
 type PHPFPMServer struct {
@@ -32,29 +31,35 @@ func (i *PHPFPMServer) FastCGISpec() *FastCGISpec {
 	return i.fastCGISpec
 }
 
-func (i *PHPFPMServer) fork() (duration time.Duration, resources *metric.Resources) {
-	duration = 10 * time.Millisecond
-	resources = &metric.Resources{
+func (i *PHPFPMServer) fork() *metric.RunTime {
+	r := metric.NewRunTime()
+	r.Duration = 10 * time.Millisecond
+	r.Resources = &metric.Resources{
 		CPUs:   1,
 		Memory: 10,
 	}
-	return duration, resources
+	return r
 }
 
-func (i *PHPFPMServer) accept() (duration time.Duration, resources *metric.Resources) {
-	duration = 10 * time.Millisecond
-	resources = &metric.Resources{
+func (i *PHPFPMServer) accept() *metric.RunTime {
+	r := metric.NewRunTime()
+	r.Duration = 10 * time.Millisecond
+	r.Resources = &metric.Resources{
 		CPUs:   1,
 		Memory: 10,
 	}
-	return duration, resources
+	return r
 }
 
-func (i *PHPFPMServer) Response() (duration time.Duration, resources *metric.Resources) {
-	c := &support.Calculator{}
-	c.Assemble(i.fork)
-	c.Assemble(i.accept)
-	c.Assemble(i.processor.Run)
-	duration, resources = c.Serialize()
-	return duration, resources
+func (i *PHPFPMServer) process() *metric.RunTime {
+	return i.processor.Run()
+}
+
+func (i *PHPFPMServer) Response() *metric.RunTime {
+
+	r := metric.NewRunTime()
+	r.Serialize(i.fork)
+	r.Serialize(i.accept)
+	r.Serialize(i.process)
+	return r
 }
